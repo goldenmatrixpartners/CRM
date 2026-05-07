@@ -15,8 +15,10 @@ section[data-testid="stSidebar"] .stMarkdown p, section[data-testid="stSidebar"]
 [data-testid="metric-container"] { background: linear-gradient(135deg, #111111 0%, #1a1a1a 100%) !important; border: 1px solid #d4af37 !important; border-radius: 8px !important; padding: 16px !important; }
 [data-testid="metric-container"] label { color: #9e7e2a !important; font-size: 0.8rem !important; letter-spacing: 1px !important; text-transform: uppercase !important; }
 [data-testid="metric-container"] [data-testid="stMetricValue"] { color: #d4af37 !important; font-size: 1.8rem !important; font-weight: 700 !important; }
-.stButton > button { background: linear-gradient(135deg, #d4af37 0%, #b8952a 100%) !important; color: #0a0a0a !important; border: none !important; border-radius: 6px !important; font-weight: 600 !important; }
+.stButton > button { background: linear-gradient(135deg, #d4af37 0%, #b8952a 100%) !important; color: #0a0a0a !important; border: none !important; border-radius: 6px !important; font-weight: 700 !important; font-size: 1rem !important; padding: 0.6rem 2rem !important; }
 .stButton > button:hover { background: linear-gradient(135deg, #f0cc50 0%, #d4af37 100%) !important; box-shadow: 0 4px 15px rgba(212,175,55,0.4) !important; }
+[data-testid="stFormSubmitButton"] button { background: linear-gradient(135deg, #d4af37 0%, #b8952a 100%) !important; color: #0a0a0a !important; border: none !important; border-radius: 6px !important; font-weight: 700 !important; font-size: 1.1rem !important; padding: 0.7rem 2.5rem !important; width: 100% !important; }
+[data-testid="stFormSubmitButton"] button:hover { background: linear-gradient(135deg, #f0cc50 0%, #d4af37 100%) !important; box-shadow: 0 4px 20px rgba(212,175,55,0.5) !important; }
 h1, h2, h3 { color: #d4af37 !important; font-family: 'Cinzel', serif !important; letter-spacing: 2px !important; }
 hr { border-color: #d4af37 !important; opacity: 0.3 !important; }
 .stDataFrame { border: 1px solid #d4af37 !important; border-radius: 8px !important; }
@@ -67,11 +69,11 @@ tab1, tab2 = st.tabs(["All Tasks", "Add Task"])
 
 with tab1:
     if todos.empty:
-        st.info("No tasks yet. Use 'Add Task' tab to create your first task.")
+        st.info("No tasks yet. Click the 'Add Task' tab above to create your first task.")
     else:
         col_f1, col_f2, col_f3 = st.columns(3)
         with col_f1:
-            status_opts = ["All"] + ["To Do","In Progress","Done"]
+            status_opts = ["All","To Do","In Progress","Done"]
             sel_status = st.selectbox("Status", status_opts)
         with col_f2:
             priority_opts = ["All","High","Medium","Low"]
@@ -79,15 +81,10 @@ with tab1:
         with col_f3:
             cats = ["All"] + sorted(todos["Category"].dropna().unique().tolist())
             sel_cat = st.selectbox("Category", cats)
-
         filtered = todos.copy()
-        if sel_status != "All":
-            filtered = filtered[filtered["Status"] == sel_status]
-        if sel_priority != "All":
-            filtered = filtered[filtered["Priority"] == sel_priority]
-        if sel_cat != "All":
-            filtered = filtered[filtered["Category"] == sel_cat]
-
+        if sel_status != "All":   filtered = filtered[filtered["Status"] == sel_status]
+        if sel_priority != "All": filtered = filtered[filtered["Priority"] == sel_priority]
+        if sel_cat != "All":      filtered = filtered[filtered["Category"] == sel_cat]
         def style_priority(val):
             if val == "High":   return "color: #cc0000; font-weight: bold"
             if val == "Medium": return "color: #d4af37; font-weight: bold"
@@ -100,22 +97,22 @@ with tab1:
         styled = filtered.style.map(style_priority, subset=["Priority"]).map(style_status, subset=["Status"])
         st.dataframe(styled, use_container_width=True, hide_index=True)
 
-        if st.button("Mark selected as Done"):
-            st.info("Select tasks by clicking rows, then use the delete/edit options.")
-
 with tab2:
     st.markdown("### Add New Task")
+    st.markdown("Fill in the fields below and click **Add Task** to save.")
+    st.markdown("")
     with st.form("add_task_form", clear_on_submit=True):
-        col1, col2 = st.columns(2)
+        task_name = st.text_input("Task Name *", placeholder="e.g. Review BTCUSD strategy")
+        col1, col2, col3 = st.columns(3)
         with col1:
-            task_name = st.text_input("Task Name", placeholder="e.g. Review BTCUSD strategy")
-            category  = st.selectbox("Category", ["Research","Strategy","Risk Management","Admin","Other"])
-            priority  = st.selectbox("Priority", ["High","Medium","Low"])
+            category = st.selectbox("Category", ["Research","Strategy","Risk Management","Admin","Other"])
         with col2:
-            status    = st.selectbox("Status", ["To Do","In Progress","Done"])
-            due_date  = st.date_input("Due Date", value=date.today())
-        notes = st.text_area("Notes", placeholder="Optional notes...")
-        submitted = st.form_submit_button("Add Task")
+            priority = st.selectbox("Priority", ["High","Medium","Low"])
+        with col3:
+            status = st.selectbox("Status", ["To Do","In Progress","Done"])
+        due_date = st.date_input("Due Date", value=date.today())
+        notes = st.text_area("Notes (optional)", placeholder="Add any extra details...", height=80)
+        submitted = st.form_submit_button("+ Add Task", use_container_width=True)
         if submitted:
             if task_name.strip():
                 new_row = {
@@ -128,7 +125,7 @@ with tab2:
                 }
                 todos = pd.concat([todos, pd.DataFrame([new_row])], ignore_index=True)
                 save_todos(todos)
-                st.success(f"Task '{task_name}' added!")
+                st.success(f"Task '{task_name}' added successfully!")
                 st.rerun()
             else:
-                st.error("Task name is required.")
+                st.error("Please enter a task name.")
