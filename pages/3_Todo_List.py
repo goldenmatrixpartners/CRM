@@ -37,12 +37,16 @@ st.markdown("##### Task and strategy management")
 st.markdown("---")
 
 TODO_FILE = "todos.csv"
+TEAM = ["Meytan", "Orel", "Both"]
 
 def load_todos():
     if os.path.exists(TODO_FILE):
         df = pd.read_csv(TODO_FILE)
+        for col in ["Task","Category","Priority","Status","Due Date","Assign To"]:
+            if col not in df.columns:
+                df[col] = ""
         return df
-    return pd.DataFrame(columns=["Task","Category","Priority","Status","Due Date"])
+    return pd.DataFrame(columns=["Task","Category","Priority","Status","Due Date","Assign To"])
 
 def save_todos(df):
     df.to_csv(TODO_FILE, index=False)
@@ -66,7 +70,7 @@ with tab1:
     if todos.empty:
         st.info("No tasks yet. Click the 'Add Task' tab to create your first task.")
     else:
-        fcol1, fcol2, fcol3 = st.columns(3)
+        fcol1, fcol2, fcol3, fcol4 = st.columns(4)
         with fcol1:
             sel_status = st.selectbox("Status", ["All","To Do","In Progress","Done"])
         with fcol2:
@@ -74,10 +78,14 @@ with tab1:
         with fcol3:
             cats = ["All"] + sorted(todos["Category"].dropna().unique().tolist())
             sel_cat = st.selectbox("Category", cats)
+        with fcol4:
+            assignees = ["All"] + TEAM
+            sel_assignee = st.selectbox("Assign To", assignees)
         filtered = todos.copy()
         if sel_status != "All":   filtered = filtered[filtered["Status"] == sel_status]
         if sel_priority != "All": filtered = filtered[filtered["Priority"] == sel_priority]
         if sel_cat != "All":      filtered = filtered[filtered["Category"] == sel_cat]
+        if sel_assignee != "All": filtered = filtered[filtered["Assign To"] == sel_assignee]
         def sp(v):
             if v == "High":   return "color: #cc0000; font-weight: bold"
             if v == "Medium": return "color: #d4af37; font-weight: bold"
@@ -87,7 +95,13 @@ with tab1:
             if v == "Done":        return "color: #00cc44"
             if v == "In Progress": return "color: #d4af37"
             return ""
-        st.dataframe(filtered.style.map(sp, subset=["Priority"]).map(ss, subset=["Status"]), use_container_width=True, hide_index=True)
+        def sa(v):
+            if v == "Meytan": return "color: #d4af37; font-weight: bold"
+            if v == "Orel":   return "color: #b0c4de; font-weight: bold"
+            if v == "Both":   return "color: #9370db; font-weight: bold"
+            return ""
+        styled = filtered.style.map(sp, subset=["Priority"]).map(ss, subset=["Status"]).map(sa, subset=["Assign To"])
+        st.dataframe(styled, use_container_width=True, hide_index=True)
 
 with tab2:
     st.markdown("### Add New Task")
@@ -96,21 +110,23 @@ with tab2:
         task_name = st.text_input("Task Name *", placeholder="e.g. Review BTCUSD strategy", key="task_name")
     with r1c2:
         due_date = st.date_input("Due Date", value=date.today(), key="due_date")
-    r2c1, r2c2, r2c3 = st.columns(3)
+    r2c1, r2c2, r2c3, r2c4 = st.columns(4)
     with r2c1:
         category = st.selectbox("Category", ["Research","Strategy","Risk Management","Admin","Other"], key="category")
     with r2c2:
         priority = st.selectbox("Priority", ["High","Medium","Low"], key="priority")
     with r2c3:
         status = st.selectbox("Status", ["To Do","In Progress","Done"], key="status")
+    with r2c4:
+        assignee = st.selectbox("Assign To", TEAM, key="assignee")
     st.markdown("")
     if st.button("+ Add Task", use_container_width=True, type="primary"):
         if task_name.strip():
             new_row = {"Task": task_name, "Category": category, "Priority": priority,
-                       "Status": status, "Due Date": str(due_date)}
+                       "Status": status, "Due Date": str(due_date), "Assign To": assignee}
             todos = pd.concat([todos, pd.DataFrame([new_row])], ignore_index=True)
             save_todos(todos)
-            st.success(f"Task '{task_name}' added!")
+            st.success(f"Task '{task_name}' assigned to {assignee}!")
             st.rerun()
         else:
             st.error("Please enter a task name.")
