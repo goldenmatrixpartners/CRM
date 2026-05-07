@@ -1,73 +1,134 @@
 import streamlit as st
 import pandas as pd
-from datetime import date
+import os
+from datetime import datetime, date
 
-st.set_page_config(page_title='To-Do List', layout='wide')
+st.set_page_config(page_title="Todo List | GMP", layout="wide")
 
-st.markdown('''
-    <style>
-    html, body, .stApp { background-color: #ffffff; color: #111827; }
-    .stApp { padding: 2rem 2.5rem; }
-    .page-title  { font-size: 2rem; font-weight: 800; margin-bottom: 0.25rem; }
-    .page-subtitle { color: #6b7280; margin-bottom: 1.5rem; }
-    .stButton>button { background-color: #d4af37; color: #111827; border: none; }
-    div[data-baseweb='popover'], div[data-baseweb='menu'] {
-        background-color: #ffffff !important; color: #000000 !important;
-    }
-    div[data-baseweb='menu'] [role='option'] {
-        background-color: #ffffff !important; color: #000000 !important;
-    }
-    div[data-baseweb='menu'] [role='option']:hover {
-        background-color: #f3f4f6 !important;
-    }
-    </style>
-''', unsafe_allow_html=True)
+st.markdown("""
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Cinzel:wght@400;700&family=Raleway:wght@300;400;600&display=swap');
+html, body, [class*="css"] { background-color: #0a0a0a !important; color: #d4af37 !important; font-family: 'Raleway', sans-serif !important; }
+.stApp { background: linear-gradient(135deg, #0a0a0a 0%, #111111 100%) !important; }
+section[data-testid="stSidebar"] { background: linear-gradient(180deg, #0d0d0d 0%, #111111 100%) !important; border-right: 1px solid #d4af37 !important; }
+section[data-testid="stSidebar"] .stMarkdown p, section[data-testid="stSidebar"] label, section[data-testid="stSidebar"] span { color: #d4af37 !important; }
+[data-testid="metric-container"] { background: linear-gradient(135deg, #111111 0%, #1a1a1a 100%) !important; border: 1px solid #d4af37 !important; border-radius: 8px !important; padding: 16px !important; }
+[data-testid="metric-container"] label { color: #9e7e2a !important; font-size: 0.8rem !important; letter-spacing: 1px !important; text-transform: uppercase !important; }
+[data-testid="metric-container"] [data-testid="stMetricValue"] { color: #d4af37 !important; font-size: 1.8rem !important; font-weight: 700 !important; }
+.stButton > button { background: linear-gradient(135deg, #d4af37 0%, #b8952a 100%) !important; color: #0a0a0a !important; border: none !important; border-radius: 6px !important; font-weight: 600 !important; }
+.stButton > button:hover { background: linear-gradient(135deg, #f0cc50 0%, #d4af37 100%) !important; box-shadow: 0 4px 15px rgba(212,175,55,0.4) !important; }
+h1, h2, h3 { color: #d4af37 !important; font-family: 'Cinzel', serif !important; letter-spacing: 2px !important; }
+hr { border-color: #d4af37 !important; opacity: 0.3 !important; }
+.stDataFrame { border: 1px solid #d4af37 !important; border-radius: 8px !important; }
+.stTextInput input, .stNumberInput input, .stSelectbox select, .stDateInput input, .stTextArea textarea {
+    background-color: #1a1a1a !important; border: 1px solid #d4af37 !important; border-radius: 6px !important; color: #d4af37 !important; }
+</style>
+""", unsafe_allow_html=True)
 
-if 'todo_items' not in st.session_state:
-    st.session_state.todo_items = pd.DataFrame([
-        {'Done': False, 'Task Name': 'Review strategy deck',
-         'Description': 'Finalize the RR3 analysis notes.',
-         'Assigned To': 'Orel', 'Due Date': date.today()},
-        {'Done': False, 'Task Name': 'Check server health',
-         'Description': 'Verify main node connections and latency.',
-         'Assigned To': 'Meytan', 'Due Date': date.today() + pd.Timedelta(days=2)},
-    ])
+with st.sidebar:
+    if os.path.exists("logo.png"):
+        st.image("logo.png", use_container_width=True)
+    else:
+        st.markdown("## GMP")
+    st.markdown("---")
 
-st.markdown('<div class="page-title">Shared To-Do List</div>', unsafe_allow_html=True)
-st.markdown('<div class="page-subtitle">A collaborative task board for Orel and Meytan.</div>', unsafe_allow_html=True)
+st.markdown("# TODO LIST")
+st.markdown("##### Task and strategy management")
+st.markdown("---")
 
-b1, b2 = st.columns(2)
-add_new      = b1.button('Add New Task')
-save_changes = b2.button('Save Changes')
+TODO_FILE = "todos.csv"
 
-if add_new:
-    new_row = pd.DataFrame([{
-        'Done': False, 'Task Name': '', 'Description': '',
-        'Assigned To': 'Orel', 'Due Date': date.today(),
-    }])
-    st.session_state.todo_items = pd.concat([st.session_state.todo_items, new_row], ignore_index=True)
+def load_todos():
+    if os.path.exists(TODO_FILE):
+        df = pd.read_csv(TODO_FILE)
+        if "Due Date" in df.columns:
+            df["Due Date"] = pd.to_datetime(df["Due Date"], errors="coerce")
+        return df
+    return pd.DataFrame(columns=["Task","Category","Priority","Status","Due Date","Notes"])
 
-column_config = {
-    'Done':        st.column_config.CheckboxColumn('Done'),
-    'Task Name':   st.column_config.TextColumn('Task Name'),
-    'Description': st.column_config.TextColumn('Description'),
-    'Assigned To': st.column_config.SelectboxColumn('Assigned To', options=['Orel', 'Meytan']),
-    'Due Date':    st.column_config.DateColumn('Due Date'),
-}
+def save_todos(df):
+    df.to_csv(TODO_FILE, index=False)
 
-edited = st.data_editor(
-    st.session_state.todo_items,
-    column_config=column_config,
-    use_container_width=True,
-    num_rows='dynamic',
-    hide_index=True,
-    key='todo_data_editor',
-)
-st.session_state.todo_items = edited.copy()
+todos = load_todos()
 
-if save_changes:
-    st.success('Task list saved successfully.')
+# ── Stats ─────────────────────────────────────────────────────────
+col1, col2, col3, col4 = st.columns(4)
+total = len(todos)
+done  = len(todos[todos["Status"] == "Done"]) if not todos.empty else 0
+pct   = round(done / total * 100) if total > 0 else 0
+high  = len(todos[(todos["Priority"] == "High") & (todos["Status"] != "Done")]) if not todos.empty else 0
+col1.metric("Total Tasks", total)
+col2.metric("Completed", done)
+col3.metric("Completion", f"{pct}%")
+col4.metric("High Priority", high)
+st.markdown("---")
 
-completed = int(edited['Done'].sum())
-if completed:
-    st.success(f'{completed} completed task({"s" if completed != 1 else ""}) -- great progress!')
+tab1, tab2 = st.tabs(["All Tasks", "Add Task"])
+
+with tab1:
+    if todos.empty:
+        st.info("No tasks yet. Use 'Add Task' tab to create your first task.")
+    else:
+        col_f1, col_f2, col_f3 = st.columns(3)
+        with col_f1:
+            status_opts = ["All"] + ["To Do","In Progress","Done"]
+            sel_status = st.selectbox("Status", status_opts)
+        with col_f2:
+            priority_opts = ["All","High","Medium","Low"]
+            sel_priority = st.selectbox("Priority", priority_opts)
+        with col_f3:
+            cats = ["All"] + sorted(todos["Category"].dropna().unique().tolist())
+            sel_cat = st.selectbox("Category", cats)
+
+        filtered = todos.copy()
+        if sel_status != "All":
+            filtered = filtered[filtered["Status"] == sel_status]
+        if sel_priority != "All":
+            filtered = filtered[filtered["Priority"] == sel_priority]
+        if sel_cat != "All":
+            filtered = filtered[filtered["Category"] == sel_cat]
+
+        def style_priority(val):
+            if val == "High":   return "color: #cc0000; font-weight: bold"
+            if val == "Medium": return "color: #d4af37; font-weight: bold"
+            if val == "Low":    return "color: #00cc44; font-weight: bold"
+            return ""
+        def style_status(val):
+            if val == "Done":        return "color: #00cc44"
+            if val == "In Progress": return "color: #d4af37"
+            return ""
+        styled = filtered.style.map(style_priority, subset=["Priority"]).map(style_status, subset=["Status"])
+        st.dataframe(styled, use_container_width=True, hide_index=True)
+
+        if st.button("Mark selected as Done"):
+            st.info("Select tasks by clicking rows, then use the delete/edit options.")
+
+with tab2:
+    st.markdown("### Add New Task")
+    with st.form("add_task_form", clear_on_submit=True):
+        col1, col2 = st.columns(2)
+        with col1:
+            task_name = st.text_input("Task Name", placeholder="e.g. Review BTCUSD strategy")
+            category  = st.selectbox("Category", ["Research","Strategy","Risk Management","Admin","Other"])
+            priority  = st.selectbox("Priority", ["High","Medium","Low"])
+        with col2:
+            status    = st.selectbox("Status", ["To Do","In Progress","Done"])
+            due_date  = st.date_input("Due Date", value=date.today())
+        notes = st.text_area("Notes", placeholder="Optional notes...")
+        submitted = st.form_submit_button("Add Task")
+        if submitted:
+            if task_name.strip():
+                new_row = {
+                    "Task": task_name,
+                    "Category": category,
+                    "Priority": priority,
+                    "Status": status,
+                    "Due Date": str(due_date),
+                    "Notes": notes
+                }
+                todos = pd.concat([todos, pd.DataFrame([new_row])], ignore_index=True)
+                save_todos(todos)
+                st.success(f"Task '{task_name}' added!")
+                st.rerun()
+            else:
+                st.error("Task name is required.")
