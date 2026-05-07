@@ -1,95 +1,158 @@
 import streamlit as st
 import pandas as pd
-from datetime import datetime, timedelta
+import os
+from datetime import datetime
 
-st.set_page_config(page_title='Trading Journal', layout='wide')
+st.set_page_config(page_title="Trading Journal | GMP", layout="wide")
 
-st.markdown('''
-    <style>
-    html, body, .stApp { background-color: #ffffff; color: #1f2937; }
-    .stApp { padding: 2rem 2.5rem; }
-    .page-title { font-size: 2rem; font-weight: 700; margin-bottom: 0.15rem; }
-    .page-subtitle { color: #6b7280; margin-top: 0; margin-bottom: 1.75rem; }
-    .summary-card {
-        background: #fffdf7;
-        border: 1px solid rgba(212,175,55,0.25);
-        border-radius: 18px;
-        padding: 1rem 1.25rem;
-        margin-bottom: 1rem;
-    }
-    .summary-label { color: #6b7280; font-size: 0.85rem; margin-bottom: 0.25rem; }
-    .summary-value { color: #b8860b; font-size: 1.55rem; font-weight: 700; }
-    .stButton>button { background-color: #d4af37; color: #111827; border: none; }
-    </style>
-''', unsafe_allow_html=True)
+st.markdown("""
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Cinzel:wght@400;700&family=Raleway:wght@300;400;600&display=swap');
+html, body, [class*="css"] { background-color: #0a0a0a !important; color: #d4af37 !important; font-family: 'Raleway', sans-serif !important; }
+.stApp { background: linear-gradient(135deg, #0a0a0a 0%, #111111 100%) !important; }
+section[data-testid="stSidebar"] { background: linear-gradient(180deg, #0d0d0d 0%, #111111 100%) !important; border-right: 1px solid #d4af37 !important; }
+section[data-testid="stSidebar"] .stMarkdown p, section[data-testid="stSidebar"] label, section[data-testid="stSidebar"] span { color: #d4af37 !important; }
+[data-testid="metric-container"] { background: linear-gradient(135deg, #111111 0%, #1a1a1a 100%) !important; border: 1px solid #d4af37 !important; border-radius: 8px !important; padding: 16px !important; }
+[data-testid="metric-container"] label { color: #9e7e2a !important; font-size: 0.8rem !important; letter-spacing: 1px !important; text-transform: uppercase !important; }
+[data-testid="metric-container"] [data-testid="stMetricValue"] { color: #d4af37 !important; font-size: 1.8rem !important; font-weight: 700 !important; }
+.stButton > button { background: linear-gradient(135deg, #d4af37 0%, #b8952a 100%) !important; color: #0a0a0a !important; border: none !important; border-radius: 6px !important; font-weight: 600 !important; }
+.stButton > button:hover { background: linear-gradient(135deg, #f0cc50 0%, #d4af37 100%) !important; box-shadow: 0 4px 15px rgba(212,175,55,0.4) !important; }
+h1, h2, h3 { color: #d4af37 !important; font-family: 'Cinzel', serif !important; letter-spacing: 2px !important; }
+hr { border-color: #d4af37 !important; opacity: 0.3 !important; }
+.stDataFrame { border: 1px solid #d4af37 !important; border-radius: 8px !important; }
+.stTextInput input, .stNumberInput input, .stSelectbox select, .stDateInput input, .stTextArea textarea {
+    background-color: #1a1a1a !important; border: 1px solid #d4af37 !important; border-radius: 6px !important; color: #d4af37 !important; }
+</style>
+""", unsafe_allow_html=True)
 
-@st.cache_data
-def load_trade_data():
-    sample = {
-        'Trade ID': [101, 102, 103, 104, 105, 106, 107, 108, 109, 110],
-        'Timestamp': ['2026-03-25 10:00', '2026-03-26 14:00', '2026-03-28 12:30',
-                      '2026-04-01 16:00', '2026-04-03 08:00', '2026-04-05 18:00',
-                      '2026-04-07 10:00', '2026-04-09 12:00', '2026-04-10 09:00', '2026-04-11 15:00'],
-        'Symbol':        ['XAU/USD'] * 10,
-        'Strategy':      ['RR3', 'GoldLong'] * 5,
-        'Timeframe':     ['2H', '3H', '4H', '2H', '3H', '4H', '2H', '4H', '3H', '2H'],
-        'Direction':     ['Long', 'Long', 'Short', 'Long', 'Short', 'Long', 'Long', 'Short', 'Long', 'Short'],
-        'Entry Price':   [2025.5, 2031.0, 2029.2, 2035.8, 2030.4, 2040.7, 2032.1, 2044.3, 2039.0, 2036.5],
-        'Exit Price':    [2032.0, 2036.5, 2018.0, 2042.0, 2024.0, 2052.5, 2037.0, 2040.0, 2045.3, 2034.2],
-        'Position Size': [0.75, 0.5, 0.8, 0.6, 0.7, 0.55, 0.65, 0.4, 0.6, 0.5],
-        'PnL ($)':       [950, 450, -320, 710, -180, 1120, 500, -200, 340, 260],
-        'Status':        ['Win', 'Win', 'Loss', 'Win', 'Loss', 'Win', 'Win', 'Loss', 'Win', 'Win'],
-    }
-    df = pd.DataFrame(sample)
-    df['Timestamp'] = pd.to_datetime(df['Timestamp'])
-    return df
+with st.sidebar:
+    if os.path.exists("logo.png"):
+        st.image("logo.png", use_container_width=True)
+    else:
+        st.markdown("## GMP")
+    st.markdown("---")
 
-trade_data = load_trade_data()
-today = datetime.now().date()
-default_start = today - timedelta(days=30)
+st.markdown("# TRADING JOURNAL")
+st.markdown("##### Record and analyze your trades")
+st.markdown("---")
 
-top_row = st.columns([4, 1])
-with top_row[0]:
-    st.markdown('<div class="page-title">Trading Journal</div>', unsafe_allow_html=True)
-    st.markdown('<div class="page-subtitle">Spreadsheet-style trade journal with instant filtering and live metrics.</div>', unsafe_allow_html=True)
-with top_row[1]:
-    date_range = st.date_input('Date Range', value=(default_start, today), max_value=today)
+DATA_FILE = "trading_data.csv"
 
-strategy_options  = sorted(trade_data['Strategy'].unique())
-timeframe_options = sorted(trade_data['Timeframe'].unique())
-filter_bar = st.columns(2)
-strategy_selected  = filter_bar[0].multiselect('Strategy',  options=strategy_options,  default=strategy_options)
-timeframe_selected = filter_bar[1].multiselect('Timeframe', options=timeframe_options, default=timeframe_options)
+def load_data():
+    if os.path.exists(DATA_FILE):
+        df = pd.read_csv(DATA_FILE)
+        if "Date" in df.columns:
+            df["Date"] = pd.to_datetime(df["Date"], errors="coerce")
+        return df
+    return pd.DataFrame(columns=["Date","Strategy","Symbol","Direction","Entry","Exit","PnL","Notes"])
 
-start_date, end_date = (date_range if isinstance(date_range, tuple) and len(date_range) == 2 else (date_range, date_range))
+def save_data(df):
+    df.to_csv(DATA_FILE, index=False)
 
-filtered_data = trade_data[
-    (trade_data['Timestamp'].dt.date >= start_date) &
-    (trade_data['Timestamp'].dt.date <= end_date) &
-    trade_data['Strategy'].isin(strategy_selected) &
-    trade_data['Timeframe'].isin(timeframe_selected)
-]
+df = load_data()
 
-total_pnl = filtered_data['PnL ($)'].sum()
-win_rate  = (filtered_data['PnL ($)'] > 0).mean() if len(filtered_data) else 0
+# Tabs
+tab1, tab2, tab3 = st.tabs(["All Trades", "Add Trade", "Import / Export"])
 
-m1, m2 = st.columns(2)
-with m1:
-    st.markdown(f'<div class="summary-card"><div class="summary-label">Total PnL</div><div class="summary-value">${total_pnl:,.0f}</div></div>', unsafe_allow_html=True)
-with m2:
-    st.markdown(f'<div class="summary-card"><div class="summary-label">Win Rate</div><div class="summary-value">{win_rate:.0%}</div></div>', unsafe_allow_html=True)
+# ── Tab 1: All Trades ─────────────────────────────────────────────
+with tab1:
+    if df.empty:
+        st.info("No trades recorded yet. Use the 'Add Trade' tab to get started.")
+    else:
+        col1, col2, col3, col4 = st.columns(4)
+        total_pnl = df["PnL"].sum()
+        win_rate = (df["PnL"] > 0).mean() * 100
+        col1.metric("Total Trades", len(df))
+        col2.metric("Total PnL", f"${total_pnl:,.2f}")
+        col3.metric("Win Rate", f"{win_rate:.1f}%")
+        col4.metric("Avg PnL", f"${df['PnL'].mean():,.2f}")
+        st.markdown("---")
+        col_f1, col_f2, col_f3 = st.columns(3)
+        with col_f1:
+            strategies = ["All"] + sorted(df["Strategy"].dropna().unique().tolist())
+            strat_filter = st.selectbox("Strategy", strategies)
+        with col_f2:
+            directions = ["All"] + sorted(df["Direction"].dropna().unique().tolist())
+            dir_filter = st.selectbox("Direction", directions)
+        with col_f3:
+            symbols = ["All"] + sorted(df["Symbol"].dropna().unique().tolist())
+            sym_filter = st.selectbox("Symbol", symbols)
+        filtered = df.copy()
+        if strat_filter != "All":
+            filtered = filtered[filtered["Strategy"] == strat_filter]
+        if dir_filter != "All":
+            filtered = filtered[filtered["Direction"] == dir_filter]
+        if sym_filter != "All":
+            filtered = filtered[filtered["Symbol"] == sym_filter]
+        def color_pnl(val):
+            if isinstance(val, (int, float)):
+                color = "#00cc44" if val > 0 else "#cc0000" if val < 0 else "#d4af37"
+                return f"color: {color}; font-weight: bold"
+            return ""
+        styled = filtered.style.map(color_pnl, subset=["PnL"])
+        st.dataframe(styled, use_container_width=True, hide_index=True)
 
-st.markdown('### Trading Journal')
-display_columns = ['Trade ID', 'Timestamp', 'Symbol', 'Strategy', 'Direction',
-                   'Entry Price', 'Exit Price', 'Position Size', 'PnL ($)', 'Status']
-journal_df = (filtered_data[display_columns]
-              .sort_values('Timestamp', ascending=False)
-              .reset_index(drop=True))
+# ── Tab 2: Add Trade ─────────────────────────────────────────────
+with tab2:
+    st.markdown("### Add New Trade")
+    with st.form("add_trade_form", clear_on_submit=True):
+        col1, col2 = st.columns(2)
+        with col1:
+            trade_date = st.date_input("Date", value=datetime.today())
+            strategy = st.text_input("Strategy", placeholder="e.g. Breakout, Trend Following")
+            symbol = st.text_input("Symbol", placeholder="e.g. BTCUSD, EURUSD")
+        with col2:
+            direction = st.selectbox("Direction", ["Long", "Short"])
+            entry = st.number_input("Entry Price", min_value=0.0, format="%.4f")
+            exit_price = st.number_input("Exit Price", min_value=0.0, format="%.4f")
+        pnl = st.number_input("PnL ($)", format="%.2f", help="Profit or loss in dollars")
+        notes = st.text_area("Notes", placeholder="Optional trade notes...")
+        submitted = st.form_submit_button("Add Trade")
+        if submitted:
+            new_row = {
+                "Date": str(trade_date),
+                "Strategy": strategy,
+                "Symbol": symbol,
+                "Direction": direction,
+                "Entry": entry,
+                "Exit": exit_price,
+                "PnL": pnl,
+                "Notes": notes
+            }
+            df = pd.concat([df, pd.DataFrame([new_row])], ignore_index=True)
+            save_data(df)
+            st.success("Trade added successfully!")
+            st.rerun()
 
-def pnl_color(val):
-    if val > 0: return 'color: green; font-weight: 700;'
-    if val < 0: return 'color: red; font-weight: 700;'
-    return 'color: #1f2937;'
-
-styled_journal = journal_df.style.map(pnl_color, subset=['PnL ($)'])
-st.dataframe(styled_journal, use_container_width=True)
+# ── Tab 3: Import / Export ────────────────────────────────────────
+with tab3:
+    st.markdown("### Import Data")
+    uploaded = st.file_uploader("Upload CSV file", type=["csv"])
+    if uploaded is not None:
+        try:
+            imported = pd.read_csv(uploaded)
+            st.dataframe(imported.head(10), use_container_width=True)
+            if st.button("Import this data"):
+                imported.to_csv(DATA_FILE, index=False)
+                st.success(f"Imported {len(imported)} rows successfully!")
+                st.rerun()
+        except Exception as e:
+            st.error(f"Error reading file: {e}")
+    st.markdown("---")
+    st.markdown("### Export Data")
+    if not df.empty:
+        csv_data = df.to_csv(index=False).encode("utf-8")
+        st.download_button(
+            label="Download trades as CSV",
+            data=csv_data,
+            file_name="trading_journal.csv",
+            mime="text/csv"
+        )
+        st.markdown(f"**{len(df)}** trades available for export")
+    else:
+        st.info("No data to export yet.")
+    st.markdown("---")
+    st.markdown("### CSV Format")
+    sample = pd.DataFrame([{"Date":"2025-01-15","Strategy":"Breakout","Symbol":"BTCUSD",
+                             "Direction":"Long","Entry":42000,"Exit":43500,"PnL":1500,"Notes":"Strong breakout"}])
+    st.dataframe(sample, use_container_width=True)
