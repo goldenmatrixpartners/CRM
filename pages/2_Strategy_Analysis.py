@@ -1,150 +1,149 @@
 import streamlit as st
 import pandas as pd
-import numpy as np
-import altair as alt
-from datetime import datetime, timedelta
+import plotly.graph_objects as go
+import plotly.express as px
+import os
 
-st.set_page_config(page_title='Strategy Analysis', layout='wide')
+st.set_page_config(page_title="Strategy Analysis | GMP", layout="wide")
 
-st.markdown('''
-    <style>
-    html, body, .stApp { background-color: #ffffff; color: #111827; }
-    .stApp { padding: 2rem 2.5rem; }
-    .page-title { font-size: 2.1rem; font-weight: 800; margin-bottom: 0.15rem; }
-    .page-subtitle { color: #6b7280; margin-bottom: 1.5rem; }
-    .metric-card {
-        background: #fffaf0;
-        border: 1px solid rgba(212,175,55,0.35);
-        border-radius: 18px;
-        padding: 1rem 1.25rem;
-        min-height: 120px;
-    }
-    .metric-label { color: #6b7280; font-size: 0.85rem; text-transform: uppercase; letter-spacing: 0.04em; }
-    .metric-value { color: #b8860b; font-size: 1.9rem; font-weight: 800; }
-    .metric-note  { color: #4b5563; font-size: 0.9rem; margin-top: 0.35rem; }
-    </style>
-''', unsafe_allow_html=True)
+st.markdown("""
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Cinzel:wght@400;700&family=Raleway:wght@300;400;600&display=swap');
+html, body, [class*="css"] { background-color: #0a0a0a !important; color: #d4af37 !important; font-family: 'Raleway', sans-serif !important; }
+.stApp { background: linear-gradient(135deg, #0a0a0a 0%, #111111 100%) !important; }
+section[data-testid="stSidebar"] { background: linear-gradient(180deg, #0d0d0d 0%, #111111 100%) !important; border-right: 1px solid #d4af37 !important; }
+section[data-testid="stSidebar"] .stMarkdown p, section[data-testid="stSidebar"] label, section[data-testid="stSidebar"] span { color: #d4af37 !important; }
+[data-testid="metric-container"] { background: linear-gradient(135deg, #111111 0%, #1a1a1a 100%) !important; border: 1px solid #d4af37 !important; border-radius: 8px !important; padding: 16px !important; }
+[data-testid="metric-container"] label { color: #9e7e2a !important; font-size: 0.8rem !important; letter-spacing: 1px !important; text-transform: uppercase !important; }
+[data-testid="metric-container"] [data-testid="stMetricValue"] { color: #d4af37 !important; font-size: 1.8rem !important; font-weight: 700 !important; }
+.stButton > button { background: linear-gradient(135deg, #d4af37 0%, #b8952a 100%) !important; color: #0a0a0a !important; border: none !important; border-radius: 6px !important; font-weight: 600 !important; }
+h1, h2, h3 { color: #d4af37 !important; font-family: 'Cinzel', serif !important; letter-spacing: 2px !important; }
+hr { border-color: #d4af37 !important; opacity: 0.3 !important; }
+.stDataFrame { border: 1px solid #d4af37 !important; border-radius: 8px !important; }
+</style>
+""", unsafe_allow_html=True)
 
-@st.cache_data
-def load_strategy_data():
-    sample = {
-        'Trade ID': range(201, 221),
-        'Entry Timestamp': [
-            '2026-03-20 09:15','2026-03-20 14:40','2026-03-21 08:10','2026-03-21 17:25',
-            '2026-03-22 10:05','2026-03-22 15:50','2026-03-23 11:30','2026-03-23 18:10',
-            '2026-03-24 09:55','2026-03-24 13:45','2026-03-25 10:20','2026-03-25 16:15',
-            '2026-03-26 08:50','2026-03-26 14:05','2026-03-27 11:05','2026-03-27 17:40',
-            '2026-03-28 09:20','2026-03-28 15:10','2026-03-29 12:25','2026-03-29 18:35',
-        ],
-        'Exit Timestamp': [
-            '2026-03-20 13:30','2026-03-20 20:10','2026-03-21 13:20','2026-03-22 01:05',
-            '2026-03-22 14:25','2026-03-22 21:40','2026-03-23 14:00','2026-03-24 00:20',
-            '2026-03-24 12:15','2026-03-24 18:35','2026-03-25 12:05','2026-03-25 21:10',
-            '2026-03-26 12:30','2026-03-26 19:15','2026-03-27 14:20','2026-03-28 02:05',
-            '2026-03-28 12:45','2026-03-28 20:30','2026-03-29 16:40','2026-03-30 01:25',
-        ],
-        'Symbol': ['XAU/USD'] * 20,
-        'Strategy': ['RR3','GoldLong'] * 10,
-        'Timeframe':['2H','3H','4H','2H','3H','4H','2H','4H','3H','2H',
-                     '4H','3H','2H','4H','3H','2H','4H','3H','2H','4H'],
-        'Direction':['Long','Long','Short','Long','Short','Long','Long','Short',
-                     'Long','Short','Long','Long','Short','Long','Long','Short',
-                     'Long','Long','Short','Long'],
-        'PnL ($)':  [820,450,-280,720,-175,980,320,-240,310,270,
-                     910,560,-310,740,650,-190,430,1020,-290,680],
-    }
-    df = pd.DataFrame(sample)
-    df['Entry Timestamp'] = pd.to_datetime(df['Entry Timestamp'])
-    df['Exit Timestamp']  = pd.to_datetime(df['Exit Timestamp'])
-    df['Duration Hours']  = (df['Exit Timestamp'] - df['Entry Timestamp']).dt.total_seconds() / 3600
-    df['Hour']            = df['Entry Timestamp'].dt.hour
-    return df
+with st.sidebar:
+    if os.path.exists("logo.png"):
+        st.image("logo.png", use_container_width=True)
+    else:
+        st.markdown("## GMP")
+    st.markdown("---")
 
-data = load_strategy_data()
+st.markdown("# STRATEGY ANALYSIS")
+st.markdown("##### Deep dive into your trading strategies")
+st.markdown("---")
 
-st.markdown('<div class="page-title">Strategy Analysis</div>', unsafe_allow_html=True)
-st.markdown('<div class="page-subtitle">Executive view of strategy performance, hourly edge, and the metrics that matter.</div>', unsafe_allow_html=True)
+DATA_FILE = "trading_data.csv"
 
-today = datetime.now().date()
-inner_cols = st.columns([2, 1])
-selected_strategy = inner_cols[0].selectbox('Select strategy', options=['All Strategies', 'RR3', 'GoldLong'])
-date_range = inner_cols[1].date_input('Date Range', value=(today - timedelta(days=30), today), max_value=today)
+def load_data():
+    if os.path.exists(DATA_FILE):
+        df = pd.read_csv(DATA_FILE)
+        if "Date" in df.columns:
+            df["Date"] = pd.to_datetime(df["Date"], errors="coerce")
+        return df
+    return pd.DataFrame(columns=["Date","Strategy","Symbol","Direction","Entry","Exit","PnL","Notes"])
 
-start_date, end_date = (date_range if isinstance(date_range, tuple) and len(date_range) == 2 else (date_range, date_range))
+df = load_data()
 
-filtered = data[(data['Entry Timestamp'].dt.date >= start_date) & (data['Entry Timestamp'].dt.date <= end_date)].copy()
-if selected_strategy != 'All Strategies':
-    filtered = filtered[filtered['Strategy'] == selected_strategy]
+if df.empty:
+    st.info("No trading data yet. Please add trades in the Trading Journal first.")
+    st.stop()
 
-def best_win_streak(series):
-    max_s = cur = 0
-    for v in series:
-        cur = cur + 1 if v > 0 else 0
-        max_s = max(max_s, cur)
-    return max_s
+# ── Filters ──────────────────────────────────────────────────────
+col_f1, col_f2 = st.columns(2)
+with col_f1:
+    strategies = ["All"] + sorted(df["Strategy"].dropna().unique().tolist())
+    sel_strategy = st.selectbox("Filter by Strategy", strategies)
+with col_f2:
+    symbols = ["All"] + sorted(df["Symbol"].dropna().unique().tolist())
+    sel_symbol = st.selectbox("Filter by Symbol", symbols)
 
-avg_duration  = filtered['Duration Hours'].mean() if len(filtered) else 0
-best_streak   = best_win_streak(filtered['PnL ($)'])
-gross_profit  = filtered.loc[filtered['PnL ($)'] > 0, 'PnL ($)'].sum()
-gross_loss    = -filtered.loc[filtered['PnL ($)'] < 0, 'PnL ($)'].sum()
-profit_factor = gross_profit / gross_loss if gross_loss else float('nan')
+filtered = df.copy()
+if sel_strategy != "All":
+    filtered = filtered[filtered["Strategy"] == sel_strategy]
+if sel_symbol != "All":
+    filtered = filtered[filtered["Symbol"] == sel_symbol]
 
-ma, mb, mc = st.columns(3)
-for col, label, value, note in [
-    (ma, 'Avg Trade Duration', str(round(avg_duration,1))+'h', 'Based on entry and exit timestamps.'),
-    (mb, 'Best Winning Streak', str(best_streak)+' trades', 'Longest consecutive profitable trades.'),
-    (mc, 'Profit Factor', str(round(profit_factor, 2)), 'Gross profits divided by gross losses.'),
-]:
-    col.markdown(
-        f'<div class="metric-card"><div class="metric-label">{label}</div><div class="metric-value">{value}</div><div class="metric-note">{note}</div></div>',
-        unsafe_allow_html=True,
+if filtered.empty:
+    st.warning("No data for selected filters.")
+    st.stop()
+
+# ── Metrics ───────────────────────────────────────────────────────
+total_pnl = filtered["PnL"].sum()
+win_rate = (filtered["PnL"] > 0).mean() * 100
+avg_pnl = filtered["PnL"].mean()
+max_dd = filtered["PnL"].min()
+
+col1, col2, col3, col4 = st.columns(4)
+col1.metric("Total PnL", f"${total_pnl:,.2f}")
+col2.metric("Win Rate", f"{win_rate:.1f}%")
+col3.metric("Avg PnL", f"${avg_pnl:,.2f}")
+col4.metric("Worst Trade", f"${max_dd:,.2f}")
+st.markdown("---")
+
+# ── Charts ────────────────────────────────────────────────────────
+tab1, tab2, tab3 = st.tabs(["Cumulative PnL", "Strategy Breakdown", "Win/Loss Distribution"])
+
+GOLD = "#d4af37"
+BG   = "#111111"
+GRID = "#222222"
+
+def dark_layout(title):
+    return dict(
+        title=title,
+        plot_bgcolor=BG, paper_bgcolor=BG,
+        font=dict(color=GOLD),
+        xaxis=dict(gridcolor=GRID, color=GOLD),
+        yaxis=dict(gridcolor=GRID, color=GOLD),
+        title_font=dict(color=GOLD, size=16)
     )
 
-strategy_stats = data.groupby('Strategy').agg(win_rate=('PnL ($)', lambda x: (x > 0).mean())).reset_index()
+with tab1:
+    df_sorted = filtered.sort_values("Date")
+    df_sorted["Cumulative PnL"] = df_sorted["PnL"].cumsum()
+    fig = go.Figure()
+    fig.add_trace(go.Scatter(
+        x=df_sorted["Date"], y=df_sorted["Cumulative PnL"],
+        mode="lines+markers", name="Cumulative PnL",
+        line=dict(color=GOLD, width=2),
+        marker=dict(color=GOLD, size=6),
+        fill="tozeroy", fillcolor="rgba(212,175,55,0.15)"
+    ))
+    fig.update_layout(**dark_layout("Cumulative PnL Over Time"))
+    st.plotly_chart(fig, use_container_width=True)
 
-win_rate_chart = (
-    alt.Chart(strategy_stats).mark_bar(cornerRadiusTopLeft=6, cornerRadiusTopRight=6)
-    .encode(
-        x=alt.X('Strategy:N'),
-        y=alt.Y('win_rate:Q', axis=alt.Axis(format='.0%', title='Win Rate')),
-        color=alt.Color('Strategy:N', scale=alt.Scale(range=['#b8860b', '#f0c674'])),
-        tooltip=[alt.Tooltip('Strategy:N'), alt.Tooltip('win_rate:Q', format='.1%')],
-    ).properties(height=320)
-)
+with tab2:
+    if "Strategy" in filtered.columns and filtered["Strategy"].notna().any():
+        strat_pnl = filtered.groupby("Strategy")["PnL"].sum().reset_index().sort_values("PnL", ascending=False)
+        colors = ["#00cc44" if v >= 0 else "#cc0000" for v in strat_pnl["PnL"]]
+        fig2 = go.Figure(go.Bar(
+            x=strat_pnl["Strategy"], y=strat_pnl["PnL"],
+            marker_color=colors, name="PnL by Strategy"
+        ))
+        fig2.update_layout(**dark_layout("PnL by Strategy"))
+        st.plotly_chart(fig2, use_container_width=True)
+        st.markdown("### Strategy Summary Table")
+        summary = filtered.groupby("Strategy")["PnL"].agg(["sum","count","mean","max","min"]).reset_index()
+        summary.columns = ["Strategy","Total PnL","Trades","Avg PnL","Best","Worst"]
+        st.dataframe(summary.style.format({"Total PnL":"${:.2f}","Avg PnL":"${:.2f}","Best":"${:.2f}","Worst":"${:.2f}"}), use_container_width=True)
+    else:
+        st.info("No strategy data available.")
 
-cum_pl_df = filtered.sort_values('Entry Timestamp').assign(CumulativePnL=lambda d: d['PnL ($)'].cufsum())
-cum_pl_chart = (
-    alt.Chart(cum_pl_df).mark_line(color='#b8860b', strokeWidth=3)
-    .encode(
-        x=alt.X('Entry Timestamp:T', title='Entry Date'),
-        y=alt.Y('CumulativePnL:Q', title='Cumulative PnL'),
-        tooltip=[alt.Tooltip('Entry Timestamp:T'), alt.Tooltip('CumulativePnL:Q', format=',.0f')],
-    ).properties(height=320)
-)
-
-hourly_df = (filtered.groupby('Hour').agg(
-    total_pnl=('PnL ($)', 'sum'), trade_count=('Trade ID', 'count'),
-    win_rate=('PnL ($)', lambda x: (x > 0).mean())).reset_index())
-
-hourly_chart = (
-    alt.Chart(hourly_df).mark_bar(cornerRadiusTopLeft=6, cornerRadiusTopRight=6)
-    .encode(
-        x=alt.X('Hour:O', title='Hour of Day'),
-        y=alt.Y('total_pnl:Q', title='Profit by Hour'),
-        color=alt.condition(alt.datum.total_pnl > 0, alt.value('#22c55e'), alt.value('#ef4444')),
-        tooltip=[alt.Tooltip('Hour:O'), alt.Tooltip('total_pnl:Q', format=',.0f'),
-                 alt.Tooltip('trade_count:Q'), alt.Tooltip('win_rate:Q', format='.0%')],
-    ).properties(height=320)
-)
-
-st.markdown('### Performance Visuals')
-c1, c2 = st.columns(2)
-with c1:
-    st.markdown('**Win Rate by Strategy**')
-    st.altair_chart(win_rate_chart, use_container_width=True)
-with c2:
-    st.markdown('**Cumulative PnL Over Time**')
-    st.altair_chart(cum_pl_chart, use_container_width=True)
-
-st.markdown('### Time-of-Day Edge')
-st.altair_chart(hourly_chart, use_container_width=True)
+with tab3:
+    wins   = filtered[filtered["PnL"] > 0]["PnL"]
+    losses = filtered[filtered["PnL"] < 0]["PnL"]
+    fig3 = go.Figure()
+    if not wins.empty:
+        fig3.add_trace(go.Histogram(x=wins, name="Wins", marker_color="#00cc44", opacity=0.75, nbinsx=20))
+    if not losses.empty:
+        fig3.add_trace(go.Histogram(x=losses, name="Losses", marker_color="#cc0000", opacity=0.75, nbinsx=20))
+    fig3.update_layout(**dark_layout("Win/Loss Distribution"), barmode="overlay")
+    st.plotly_chart(fig3, use_container_width=True)
+    col_w, col_l = st.columns(2)
+    with col_w:
+        st.metric("Avg Win", f"${wins.mean():.2f}" if not wins.empty else "N/A")
+        st.metric("Total Wins", len(wins))
+    with col_l:
+        st.metric("Avg Loss", f"${losses.mean():.2f}" if not losses.empty else "N/A")
+        st.metric("Total Losses", len(losses))
